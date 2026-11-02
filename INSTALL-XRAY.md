@@ -41,6 +41,10 @@ yourself. `XRAY_RUNTIME=off` skips Docker installation; Xray controls remain
 unavailable until a working Docker socket is present. Native NixOS installations
 must declare their container runtime separately; packaging includes the modules.
 
+The normal uninstaller stops the node's managed Xray interfaces and HTTPS decoy.
+Its existing keep/remove-data choice still controls certificate and configuration
+retention; Docker itself and unrelated containers are not removed.
+
 ## Updates and source selection
 
 The bootstrap default, panel enrollment commands and update wrappers point to

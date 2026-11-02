@@ -704,6 +704,9 @@ rm_log_journals(){ local f d ns u mid had=""
 # only by an update that was killed): update.sh runs on every kind of box — the CLI, the panel's Update button, a node
 # updated from the panel — and keeps its lock for the next run.
 rm_update_leftovers(){ _swg_left && return 0; rmrf /run/swg-update.lock /run/swg-update.running /tmp/swg-update.lock; return 0; }
+rm_xray_containers(){
+  run sh -c 'docker ps -aq --filter "name=^/swg-xray-(xray[0-9]+|decoy)$" 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1 || true'
+}
 rm_node(){
   info "Removing swg-node (bare-metal entry server)"
   node_goodbye   # signal the panel before we tear down the config it needs
@@ -723,6 +726,7 @@ rm_node(){
   rmrf $SD/"swg-relay@.service" $SD/swg-relay.slice /etc/swg-panel/relay
   rmrf /run/swg-relay-*.sock   # its status sockets: outside the unit's RuntimeDirectory, unlinked only at a relay's next start
   if [ -e $SD/swg-noded.service ]; then run systemctl disable --now swg-noded; fi
+  rm_xray_containers
   # The SOCKS5 exits' tunnels (hev-socks5-tunnel, swg-noded's own transient units in swg-exit.slice — SOCKS5-EXIT-PLAN
   # §6.4): after swg-noded, which would make them again. Their binary and configs go with /var/lib/swg-noded below; the
   # slice's CPU cap was --runtime and dies with it. (A Docker node's hev is a child of its container.)
@@ -1007,6 +1011,7 @@ rm_docker_node(){  info "Removing Docker node container (swg-node)"
   _node_nft_sweep "$_ifn"             # stopped, its interfaces, then its nft tables with its own nft — before `docker rm`
   run sh -c 'docker rm -f swg-node >/dev/null 2>&1 || true'
   run sh -c 'ids=$(docker ps -aq --filter name=swg-turn- 2>/dev/null); [ -n "$ids" ] && docker rm -f $ids >/dev/null 2>&1 || true'   # this node's turn-proxy containers
+  rm_xray_containers
   [ -f "$SD/swg-noded.service" ] || rm_smartdns_redirect   # its dnsmasq was in the container (host networking: the DNATs are the host's)
   docker_node_goodbye                 # sign off AFTER the container is stopped — else its next 5s sync re-reports and clears the panel's "Uninstalled" tag (leaving it merely "offline")
   # delete the leftover HOST-namespace wg/awg netdevs the (host-networking) node created
@@ -1041,6 +1046,7 @@ rm_docker_files(){ info "Removing the Docker deployment files ($DOCKER_DIR)"
   run sh -c "cd '$DOCKER_DIR' 2>/dev/null && { docker compose down --remove-orphans >/dev/null 2>&1 || docker-compose down --remove-orphans >/dev/null 2>&1; } || true"
   docker_rm_project_networks
   for _p in swg-node swg-panel swg-turn-; do run sh -c "docker ps -aq -f 'name=$_p' 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1 || true"; done
+  rm_xray_containers
   docker_node_goodbye   # sign off AFTER the container is gone (no further sync clears the panel's "Uninstalled")
   [ -f "$SD/swg-noded.service" ] || rm_smartdns_redirect   # no node container left to answer a Force-DNS redirect
   ask_full_data_fate; apply_full_data_fate; rmrf /var/lib/swg-recovery; ok "Docker deployment files removed"; }

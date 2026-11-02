@@ -52,6 +52,13 @@ class InstallTests(unittest.TestCase):
                 self.assertIn("SWG_TURN_IMAGE:-ghcr.io/" + owner + "/swg-node:${SWG_IMAGE_TAG:-latest}", compose.read_text())
                 self.assertIn("SWG_IMAGE_TAG=sha-test", environment.read_text())
 
+    def test_uninstall_scopes_xray_cleanup(self):
+        source = (ROOT / "uninstall.sh").read_text()
+        self.assertIn('name=^/swg-xray-(xray[0-9]+|decoy)$', source)
+        for function in ("rm_node", "rm_docker_node", "rm_docker_files"):
+            body = source.split(function + "(){", 1)[1].split("\n}", 1)[0]
+            self.assertIn("rm_xray_containers", body)
+
     def test_docker_dry_runs_stage_complete_context(self):
         for role in ("master", "host", "node"):
             with self.subTest(role=role), tempfile.TemporaryDirectory(prefix="swg-install-preview-") as directory:
