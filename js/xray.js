@@ -14,6 +14,16 @@ export function openXray(node, iface) {
   openModal(html`<${XraySheet} node=${node} iface=${iface}/>`);
 }
 
+export function XraySetupActions({ node, blocked = false, chips = false }) {
+  const record = nodeRecord(node);
+  const unavailable = T("This node does not report Xray support. Install or update this existing node from our fork, preserving its enrollment token, then wait for its next sync.");
+  const className = chips ? "chip" : "btn btn-mini";
+  return html`<button class=${className} style="color:#A78BFA" disabled=${blocked} title=${record.xray_capable ? "" : unavailable}
+      onClick=${() => record.xray_capable ? openXray(node) : toast(unavailable, "err")}>Xray</button>
+    <button class=${className} style="color:#A78BFA" disabled=${blocked} title=${record.xray_selfhost_capable ? "" : unavailable}
+      onClick=${() => record.xray_selfhost_capable ? openSelfHostedXray(node) : toast(unavailable, "err")}>${T(chips ? "Xray · steal oneself" : "Set up steal oneself")}</button>`;
+}
+
 export function openSelfHostedXray(node, iface) {
   openModal(html`<${SelfHostedXraySheet} node=${node} iface=${iface}/>`);
 }

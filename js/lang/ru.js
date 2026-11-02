@@ -11,6 +11,7 @@
  */
 
 export const STR = {
+  "This node does not report Xray support. Install or update this existing node from our fork, preserving its enrollment token, then wait for its next sync.": "Эта нода не сообщает о поддержке Xray. Установите или обновите существующую ноду из нашего форка, сохранив её токен регистрации, и дождитесь следующей синхронизации.",
   "Node name": "Имя ноды",
   "Panel URL": "Адрес панели",
   "Setup commands": "Команды установки",

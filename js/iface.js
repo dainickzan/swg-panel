@@ -13,7 +13,7 @@
 import { T, Trich, Tsplit, plural, pluralWord, srvText, fmtNum } from "./i18n.js";
 import { esc, tkey, seen, dur, ago, fmtBytes, ipOf, ipChoices, portOf, listenAddr, ipPickerVal, V, agoAge, isMobile } from "./util.js";
 import { Store, api, bus, useStore } from "./store.js";
-import { openXray, openSelfHostedXray, XrayDetail } from "./xray.js";
+import { openXray, XraySetupActions, XrayDetail } from "./xray.js";
 import { go } from "./router.js";
 import { pickThemed, toThemed, IFACE_COLOR_DEFAULTS } from "./theme.js";
 import {
@@ -1432,8 +1432,7 @@ export function LoadIfaceSheet({ node, pre, ghost, back }) {
       <div class=${"chiprow" + (ghost ? "" : " proto3")}>
         <button class=${"chip c-wg" + (proto === "wg" ? " on" : "")} onClick=${() => pickProto("wg")}>WireGuard</button>
         <button class=${"chip c-awg" + (proto === "awg" ? " on" : "")} onClick=${() => pickProto("awg")}>AmneziaWG</button>
-        ${ghost || !nrec.xray_capable ? null : html`<button class="chip" style="color:#A78BFA" onClick=${() => openXray(node)}>Xray</button>`}
-        ${ghost || !nrec.xray_selfhost_capable ? null : html`<button class="chip" style="color:#A78BFA" onClick=${() => openSelfHostedXray(node)}>${T("Xray · steal oneself")}</button>`}
+        ${ghost ? null : html`<${XraySetupActions} node=${node} chips/>`}
         ${ghost || !wdttOk ? null : html`<button class=${"chip c-wdtt" + (proto === "wdtt" ? " on" : "")} onClick=${() => pickProto("wdtt")}>WDTT</button>`}
         ${ghost || !csqttOk ? null : html`<button class=${"chip c-csqtt" + (proto === "csqtt" ? " on" : "")} onClick=${() => pickProto("csqtt")}>CSQTT</button>`}
         ${ghost ? null : html`<button type="button" class=${"adoptsw" + (adoptMode ? " on" : "")} aria-pressed=${adoptMode}
