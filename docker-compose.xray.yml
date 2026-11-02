@@ -1,0 +1,16 @@
+services:
+  swg-panel:
+    image: swg-panel-xray:1.8.11-local
+    pull_policy: never
+    environment:
+      SWG_UPDATE_TRIGGER: ""
+  swg-sub:
+    image: swg-panel-xray:1.8.11-local
+    pull_policy: never
+    volumes:
+      - /dev/null:/var/lib/swg-panel/xray-keys.json:ro
+  swg-node:
+    image: swg-node-xray:1.8.11-local
+    pull_policy: never
+    environment:
+      SWG_UPDATE_TRIGGER: ""

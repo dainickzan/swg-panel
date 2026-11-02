@@ -14,6 +14,10 @@
 
 # swgPanel
 
+**Xray-enabled fork:** this repository includes Xray interfaces, self-hosted REALITY
+and **Nodes -> Setup commands**. See [INSTALL-XRAY.md](INSTALL-XRAY.md) for master,
+host and node bootstrap commands. Docker installs build this fork by default.
+
 **Easy-to-use self-hosted WireGuard & AmneziaWG control panel with TURN-PROXY support. Deploy your own VPN in minutes.**
 
 swgPanel is a control panel for running your own WireGuard / AmneziaWG VPN across one or more servers.
@@ -199,7 +203,7 @@ Copy the command onto your server and run it. It **asks you a few simple questio
 up, including HTTPS.
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)"
 ```
 
 > **Already `root`?** Many fresh Debian/VPS images log you in as root with **no `sudo` installed** — just drop
@@ -234,13 +238,13 @@ If you chose **Master** above, you already have your first VPN server — you ca
    For a **bare-metal** server:
 
    ```bash
-   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- node
+   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- node
    ```
 
    For a **Docker** server:
 
    ```bash
-   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- docker node
+   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- docker node
    ```
 
 2. Run that command on the new server. It asks for your panel’s address and the key (both pre-filled if
@@ -418,7 +422,7 @@ before it does anything** and keeps your data safe.
 Run this on any server (panel or VPN server) — it figures out what’s installed and updates it in place,
 keeping all your settings and users:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- update
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- update
 ```
 
 **Coming from 1.8.6?** A plain-WireGuard interface you **restored** under 1.8.6 came back as AmneziaWG.
@@ -471,7 +475,7 @@ from it takes.
 - **Rebuilding a VPN server?** Run the recovery helper on it and it finds the server’s leftover identity so
   it rejoins your panel **without re-enrolling**:
   ```bash
-  sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- recovery
+  sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- recovery
   ```
 - **Server box gone for good?** When the old machine is truly lost — nothing left to recover from — the
   panel can **rebuild** the node onto fresh hardware from the identity *it* holds: the same public keys, so
@@ -488,13 +492,13 @@ Just re-run the installer asking for the *other* method — it offers **convert 
 To move a server **to bare-metal**:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- master
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- master
 ```
 
 To move it **to Docker**:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- docker master
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- docker master
 ```
 
 It stages the new version fully **before** removing the old one, so the switch takes only a few seconds and
@@ -507,7 +511,7 @@ Removes swgPanel, asking about **each piece** first (the panel, a VPN server, th
 turn-proxies) — nothing goes without a yes, and you can keep your users/servers data for a future
 reinstall:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- uninstall
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- uninstall
 ```
 
 ## A few things worth knowing

@@ -95,6 +95,8 @@ def _swg_reexec(hold_sighup=False):
 _swg_reexec()
 
 import base64
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import xray_support
 import contextlib
 import fcntl
 import gzip
@@ -18737,6 +18739,11 @@ def build_snapshot(node_cfg, online_max, last_samples, now=None):
         snap["udp_ports"] = NODE_UDP_PORTS
     snap["udp_listen"] = udp_listen_ports()           # what the host listens on — the panel's own port picks avoid it (S9e)
     snap["wdtt"] = wdtt_snapshot()                    # WDTT instances: active + server pubkey + per-password device/traffic (read-back for the panel; no privkeys)
+    snap["xray_capable"] = xray_support.capable(globals())
+    snap["xray_selfhost_capable"] = snap["xray_capable"]
+    snap["xray_selfhost"] = xray_support.xray_selfhost.snapshot(globals()) if snap["xray_capable"] else {}
+    snap["xray_tcp_ports"] = xray_support.xray_selfhost.tcp_ports()
+    snap["xray"] = xray_support.snapshot(globals())
     snap["csqtt"] = csqtt_snapshot()                  # csqtt instances (raw-TUN): active + per-password device/traffic + byte-delta online (no privkeys)
     snap["csqtt_lines"] = list(CSQTT_KNOWN_LINES)    # the csqtt lines this noded can run — the panel sends no other line here (docs/CSQTT-LINES-PLAN.md G1)
     snap["csqtt_ar_pw"] = 1                          # desired.json carries a password's own App routing (an exception) — the panel's card reads it
@@ -25770,10 +25777,10 @@ def csqtt_snapshot():
 UPDATE_CMD_TMPL = (
     'B=$(mktemp) && trap \'rm -f "$B"\' EXIT && '
     '{{ curl -fsSL --connect-timeout 20 --max-time 120 -o "$B" '
-    'https://raw.githubusercontent.com/SanityProtocol/swg-panel/{ref}/bootstrap.sh '
+    'https://raw.githubusercontent.com/dainickzan/swg-panel/{ref}/bootstrap.sh '
     '|| {{ echo "could not fetch bootstrap.sh from raw.githubusercontent.com — trying api.github.com" >&2; '
     'curl -fsSL --connect-timeout 20 --max-time 120 -o "$B" -H "Accept: application/vnd.github.raw" '
-    '"https://api.github.com/repos/SanityProtocol/swg-panel/contents/bootstrap.sh?ref={ref}"; }}; }} && '
+    '"https://api.github.com/repos/dainickzan/swg-panel/contents/bootstrap.sh?ref={ref}"; }}; }} && '
     'SWG_REF={ref} bash "$B" update -y --no-components --node-only')
 DEFAULT_UPDATE_REF = "main"
 
@@ -26358,6 +26365,9 @@ def main():
                     _ctr_job_start(_adc_name, (_adc.get("iface") or "").strip(), _adc.get("at") or 0,
                                    node_cfg, agent, sudo)
                 _ctr_job_collect(node_cfg)
+                if xray_support.capable(globals()):
+                    xray_support.xray_selfhost.reconcile(reply.get("xray_selfhost"), reply.get("xray_selfhost_remove"), dict(globals(), ENDPOINT_HOST=node_cfg.get("endpoint_host")))
+                xray_support.reconcile(reply.get("xray"), reply.get("xray_remove"), globals())
                 cq = reconcile_csqtt(reply.get("csqtt"), reply.get("csqtt_remove"))   # csqtt (raw-TUN): parallel to wdtt; removals ONLY from the explicit list
                 # IMPORTED EXITS — the tunnels we create (WARP registration / a pasted profile). Before the
                 # routing reconcile below, so a device created this pass is already there when the plan that

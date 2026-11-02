@@ -386,7 +386,7 @@ in
 
     image = mkOption {
       type = types.str;
-      default = "ghcr.io/sanityprotocol/swg-panel:latest";
+      default = "ghcr.io/dainickzan/swg-panel:latest";
       description = ''
         The panel image, which swg-sub also runs (swg-sub is pure stdlib and needs no build of its
         own). **Pin it by digest** if you want a `nixos-rebuild --rollback` that goes back to the
@@ -1075,6 +1075,7 @@ in
           # is nothing to open. swg-sub reads none of them; it takes its config from subs/serve.json.
           "/dev/null:/etc/swg-panel/auth:ro"                      # the panel login hash
           "/dev/null:/var/lib/swg-panel/panel-settings.json:ro"   # webhook secrets, API token hashes
+          "/dev/null:/var/lib/swg-panel/xray-keys.json:ro"
           "/dev/null:/var/lib/swg-panel/subs/vault.json:ro"       # the subscription-key vault
           "/dev/null:/var/lib/swg-panel/subs/escrow.json:ro"      # SK-wrapped per-user unlock keys
         ];

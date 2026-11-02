@@ -1,0 +1,4 @@
+FROM ghcr.io/sanityprotocol/swg-panel@sha256:5bc226651e7b3311b854385cb4e87e84e1b1870d89065282c5148016a9642f2d
+COPY swg-panel-server swg-sub reconcile.js sub.js xray_support.py xray_selfhost.py /opt/swg-panel/
+COPY js/ /opt/swg-panel/js/
+RUN sed -i 's/\r$//' /opt/swg-panel/swg-panel-server /opt/swg-panel/swg-sub && chmod +x /opt/swg-panel/swg-panel-server /opt/swg-panel/swg-sub

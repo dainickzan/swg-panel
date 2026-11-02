@@ -96,6 +96,8 @@ _swg_reexec(hold_sighup=len(sys.argv) == 1)   # the server start (no arguments) 
 
 import ast
 import base64
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import xray_support
 import gzip
 import collections
 import contextlib
@@ -1010,7 +1012,7 @@ def _ver_behind(have, ref):
 # Cached by the file's inode, mtime and size (every writer replaces it by rename), so the 5 s poll costs one stat; a
 # failed read is not cached.
 UPDATE_WRAPPER = os.environ.get("SWG_UPDATE_WRAPPER") or "/usr/local/bin/swg-update"
-_WRAPPER_REF_RE = re.compile(r'^URL="\$\{SWG_BOOTSTRAP_URL:-https://raw\.githubusercontent\.com/SanityProtocol/swg-panel/'
+_WRAPPER_REF_RE = re.compile(r'^URL="\$\{SWG_BOOTSTRAP_URL:-https://raw\.githubusercontent\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/'
                              r'([^/"]{1,100})/bootstrap\.sh\}"$', re.M)   # update.sh reads it back as [^/]*
 _WRAPPER_REF = {"key": None, "ref": ""}
 
@@ -1124,7 +1126,7 @@ def _ver_ahead(have, ref):
 # panel's release check asked for `?cb=…`, failed with a ValueError, and never learned a new release was out (1.8.8 VM
 # re-run, D4 — q1 on Docker, q3, q6).
 REMOTE_VERSION_URL = (os.environ.get("SWG_LATEST_URL") or "").strip() \
-    or "https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/VERSION"
+    or "https://raw.githubusercontent.com/dainickzan/swg-panel/main/VERSION"
 REMOTE_CHANGELOG_URL = REMOTE_VERSION_URL.rsplit("/", 1)[0] + "/CHANGELOG.md"   # sibling of VERSION on the same ref
 
 def _changelog_url(lang):
@@ -1255,7 +1257,7 @@ def _changelog_entries(lang="en", want=""):
 # The script as an ARGUMENT of `bash -c`, not piped in: under `curl … | sudo bash` sudo-rs (Ubuntu 26.04's sudo) runs it in
 # the background of the terminal, where its first question freezes it (bootstrap.sh _swg_tty_fg).
 UPDATE_CMD = os.environ.get("SWG_UPDATE_CMD") or ("" if PANEL_DECLARATIVE else
-    'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)"'
+    'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)"'
     " -- update -y --no-components")
 # Touching this file path-activates a root systemd updater (swg-update.path → swg-update.service),
 # which runs in its OWN cgroup so restarting the panel mid-update doesn't kill it. Set by the installer.
@@ -3546,7 +3548,7 @@ def _is_csqtt_target(t):
 def _is_self_contained_target(t):
     """Does this roster target land on ANY self-contained turn-family instance (WDTT or csqtt)? Both own their
     interface + key custody, so shared gates (ghost/missing/dangling skips, egress) key off this one predicate."""
-    return _is_wdtt_target(t) or _is_csqtt_target(t)
+    return _is_wdtt_target(t) or _is_csqtt_target(t) or t.get("type") == "xray"
 
 # ── THE kind authority ────────────────────────────────────────────────────────────────────────────
 # Every gate below used to ask `_WDTT_IFACE_RE.match(iface)` — "is it called wdtt<N>?" — and treat the
@@ -3558,6 +3560,8 @@ def iface_kind(deps, nodes, snaps, node, iface, declared=""):
     """"wg" | "awg" | "wdtt" | "csqtt" for one (node, iface). `declared` is a caller-supplied target `type`
     (the roster writes an authoritative one) and wins when it names a self-contained kind — a target may
     outlive the instance it points at, and a dangling wdtt target must not silently re-read as WireGuard."""
+    if declared == "xray" or iface in ((nodes.get(node) or {}).get("xray") or {}):
+        return "xray"
     if declared in ("wdtt", "csqtt"):
         return declared
     n = nodes.get(node) or {}
@@ -3583,7 +3587,7 @@ def is_keyless_kind(kind):
     """WDTT + csqtt own their interface and mint the client's address (and, for WDTT, its keypair) on connect,
     so such a target carries NO browser keypair and NO client address — the panel-owned password IS the
     credential. ONE predicate so every "does this target need a pubkey / an ip / a client config?" gate agrees."""
-    return kind in ("wdtt", "csqtt")
+    return kind in ("wdtt", "csqtt", "xray")
 
 
 SMART_DNS_PORT = 5354          # the node's Force-DNS dnsmasq listens on 127.0.0.1 here (swg-noded SMART_DNS_PORT)
@@ -3717,6 +3721,8 @@ def mint_keyless_secrets(targets, existing):
         out["wdtt_password"] = gen_wdtt_password()
     if "csqtt" in kinds and not (existing or {}).get("csqtt_password"):
         out["csqtt_password"] = gen_csqtt_password()
+    if "xray" in kinds and not (existing or {}).get("xray_uuid"):
+        out["xray_uuid"] = xray_support.new_credential()
     return out
 
 
@@ -4425,7 +4431,7 @@ def peer_set(roster, pid, fields, now):
     # ⚠️ PRESERVED HERE OR IT IS LOST. This rebuild is a whitelist, so a field it does not name is dropped by the next
     # unrelated save — an update-target or a rekey would silently un-private a device, which is the direction that opens
     # something. `if v` also means an explicit False clears the key, which is how it is unset.
-    for k in ("disabled", "disabled_at", "unblock_at", "expiry", "wdtt_password", "csqtt_password", "vk_hash", "sub_hide",
+    for k in ("disabled", "disabled_at", "unblock_at", "expiry", "wdtt_password", "csqtt_password", "xray_uuid", "vk_hash", "sub_hide",
               "routes", "share", "private", "router", "p2p_port"):
         v = fields.get(k, p.get(k))
         if v:
@@ -4441,7 +4447,7 @@ def peer_set(roster, pid, fields, now):
 # What a peer can publish to its subscription. A deployment yields one or more SOURCES: a wg/awg target yields
 # its own type, and (when proxies front its interface) "turn"; a self-contained target yields its own kind. The
 # operator hides sources per peer — the panel still shows every deployment, only the subscription narrows.
-SUB_SOURCES = ("wg", "awg", "wdtt", "csqtt", "turn")
+SUB_SOURCES = ("wg", "awg", "wdtt", "csqtt", "xray", "turn")
 
 def peer_sub_sources(peer, snaps):
     """Every source this peer actually offers, in SUB_SOURCES order — the set a hide list is validated against.
@@ -4492,6 +4498,8 @@ def unassign_peer(p, store_configs, config_dir, now):
         # this the ex-holder's link kept working after their user was deleted, which is exactly what this
         # function exists to prevent — and silently, since the peer looks safely parked from the panel.
         p["csqtt_password"] = gen_csqtt_password()
+    if p.get("xray_uuid"):
+        p["xray_uuid"] = xray_support.new_credential()
     p["modified_at"] = now
     for t in p.get("targets", []):
         if p.get("pubkey"):                        # WG only; a keyless WDTT peer has no stored .conf
@@ -14805,6 +14813,11 @@ def _node_ports(deps, nodes, nid, skip_exits=False, skip=None):
         add(tail(c.get("listen")), ifn + " (csqtt)", ("csqtt", ifn))
     for ifn, c in ents(snap.get("csqtt")):
         add(tail(c.get("listen")), ifn + " (csqtt)", ("csqtt", ifn))
+    for ifn, record in (node.get("xray") or {}).items():
+        add(record.get("port"), ifn + " (Xray)", ("xray", ifn))
+        add(record.get("api_port"), ifn + " (Xray statistics)", ("xray", ifn))
+    for field in ("http_port", "https_port"):
+        add((node.get("xray_selfhost") or {}).get(field), "Self-hosted REALITY decoy", ("xray_selfhost", "decoy"))
     for lr in (node.get("links") or {}).values():
         add(lr.get("listen_port"), "a mesh link")
     for x in (snap.get("container_ifaces") or []):
@@ -19238,13 +19251,15 @@ _SNAP_TELEMETRY = ("inet", "cat_rate", "exit_rate")
 # ⚠️ THE CONTAINER **AND** ITS ELEMENTS. Checking only the outer type let `{"awg0": "x"}` through, and the
 # reader that raises is `blk.get("meta")` — one level in. Every reader of these three walks the elements as
 # objects, so that is the shape to insist on.
-_SNAP_STATE = ("interfaces", "wdtt", "csqtt")
+_SNAP_STATE = ("interfaces", "wdtt", "csqtt", "xray")
 # …and every other top-level field a reader WALKS, as (container, item): the type a list's entries or an object's values
 # must have, or None for an object read key by key. Each is the shape every swg-noded build sends — the same producer at
 # 1.8.8 and 1.8.9 (build_snapshot), checked against the test fleet's own snapshots — and each, in another shape, raised in
 # a reader the whole panel shares: /api/state for every operator, or every node's sync (1.8.9 qualification R2 PANEL-1 /
 # PANEL-1c, found by driving every field the readers touch × the wrong types; tests/snap_shape_selftest.py [9] keeps it).
 _SNAP_SHAPE = {
+    "xray_selfhost": (dict, None),
+    "xray_tcp_ports": (list, int),
     **dict.fromkeys(("container_ifaces", "csqtt_candidates", "devexit", "exit_candidates", "exits", "iface_candidates",
                      "node_ip_ifaces", "turn_proxies", "wdtt_dormant"), (list, dict)),
     **dict.fromkeys(("ether_ifaces", "exit_kinds", "ifaces_awaiting_key", "node_ifaces", "node_ips"), (list, str)),
@@ -24312,6 +24327,13 @@ class TrafficLedger:
                             rx, tx = _lnum(pe.get("up_bytes")), _lnum(pe.get("down_bytes"))   # up = client→server = rx
                             if rx is not None and tx is not None:
                                 self._observe(nid, ifn, pid, rx, tx, now, mono)
+            for instance in snap.get("xray") or []:
+                for peer in instance.get("peers") or []:
+                    pid = peer.get("peer_id")
+                    if (nid, instance.get("iface"), pid) in self.deploys:
+                        rx, tx = _lnum(peer.get("rx_bytes")), _lnum(peer.get("tx_bytes"))
+                        if rx is not None and tx is not None:
+                            self._observe(nid, instance["iface"], pid, rx, tx, now, mono)
             self._span(nid, now)
             self.newest = max(self.newest, now)
             kick = self.observed and (self.prompt or self.d_index or bool(self.q_fine or self.q_day)) and mono >= self._retry_at
@@ -24404,7 +24426,7 @@ class TrafficLedger:
                 if not isinstance(t, dict) or not isinstance(t.get("node"), str) or not isinstance(t.get("iface"), str) \
                         or not t["node"] or not t["iface"]:           # a hand-edited target (an int or a list) names no counter
                     continue
-                cred = (p.get("wdtt_password") if _is_wdtt_target(t)
+                cred = (pid if t.get("type") == "xray" else p.get("wdtt_password") if _is_wdtt_target(t)
                         else p.get("csqtt_password") if _is_csqtt_target(t) else p.get("pubkey"))
                 if not cred:                                   # an all-keyless peer's "" pubkey, a keyless target with no password
                     continue
@@ -25438,6 +25460,8 @@ _SYNC_SEQ = itertools.count(1)   # every node sync's arrival number — TrafficL
 # ───────────────────────── API ─────────────────────────
 
 def api(method, path, qs, body, deps):
+    if path.startswith("/api/xray/") or path.startswith("/api/xray-peer/"):
+        return xray_support.panel_api(method, path, qs, body, deps, globals())
     fleet = deps["fleet"]; roster_path = deps["roster_path"]
     nodes = nodes_load(deps["nodes_path"])
     snaps = deps.get("node_snaps") or {}; seen = deps.get("node_seen") or {}
@@ -25936,6 +25960,10 @@ def api(method, path, qs, body, deps):
                                                                     "wan_iface", "routing", "routing_exit_ips", "title", "params", "exit_id", "reach", "dns", "dns_orig", "bind_ip", "line",
                                                                     "app_routing", "app_routing_except") if k in ov}
                                       for ifn, ov in _c.items()},
+                        "xray_cfg": {ifn: xray_support.public_config(record) for ifn, record in (c.get("xray") or {}).items()},
+                        "xray_capable": bool(snap.get("xray_capable")),
+                        "xray_selfhost_capable": bool(snap.get("xray_selfhost_capable")),
+                        "xray_selfhost_cfg": c.get("xray_selfhost") or {},
                         "wdtt_restoring": sorted((c.get("wdtt_restore") or {}).keys()),  # identity restores in flight (cleared when the node reports the blessed pubkey)
                         "wdtt_recreating": sorted((c.get("wdtt_recreate") or {}).keys()),  # fresh-identity recreates in flight (vault abandoned)
                         "wdtt_adopting": sorted(k for k, v in _w.items() if (v or {}).get("adopt_foreign")),   # foreign-server take-overs in flight (cleared once the node reports the instance)
@@ -35847,6 +35875,7 @@ class Handler(BaseHTTPRequestHandler):
         _fb_vk = str(((Handler.deps.get("panel_settings") or {}) if Handler.deps else {}).get("vk_link") or "")
         _wdtt_des = _wdtt_reply(roster, nodes, nid, _fb_vk)
         _csqtt_des = _csqtt_reply(roster, nodes, nid, _fb_vk, snap)
+        _xray_des = xray_support.desired(roster, nodes, nid, keys=xray_support._read(os.path.join(os.path.dirname(Handler.deps["roster_path"]), "xray-keys.json")))
         # Take over a wg/awg server running in ANOTHER container (Amnezia). One-shot, like the adoption
         # markers above: the node stops that container and stands the same server up natively, then reports
         # what it found so the peers can be imported. Sent only while the request is live.
@@ -35923,6 +35952,10 @@ class Handler(BaseHTTPRequestHandler):
                                 # Minus anything this SAME reply asks for: a reused iface name would otherwise be
                                 # removed and recreated on every sync (see the delete-ack above).
                                 "wdtt_remove": sorted(set((nodes.get(nid) or {}).get("wdtt_delete") or {}) - set(_wdtt_des or {})),
+                                "xray": _xray_des,
+                                "xray_selfhost": node.get("xray_selfhost"),
+                                "xray_selfhost_remove": bool(node.get("xray_selfhost_remove")),
+                                "xray_remove": sorted(set((nodes.get(nid) or {}).get("xray_delete") or {}) - set(_xray_des)),
                                 "csqtt": _csqtt_des,   # csqtt instances (raw-TUN) — parallel to wdtt; declarative, node reconciles
                                 "csqtt_remove": sorted(set((nodes.get(nid) or {}).get("csqtt_delete") or {}) - set(_csqtt_des or {})),
                                 "iface_key": node.get("iface_key") or {},   # per-iface {restore|rebaseline} keypair requests

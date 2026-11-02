@@ -75,7 +75,7 @@ PROFILE="${PROFILE:-host}"
 ROLE="${ROLE:-}"                        # master | host — asked in Step 1 when the entry is `host`.
                                         # master ⇒ master compose profile (panel + a co-located,
                                         # auto-enrolled node container); mirrors bare-metal master.
-BUILD="${BUILD:-false}"                 # true = build images from source (stages full context); default pulls from GHCR
+BUILD="${BUILD:-true}"
 INSTALL_DIR="${SWG_DOCKER_DIR:-/opt/swg-panel-docker}"
 # Panel
 PANEL_PASSWORD="${PANEL_PASSWORD:-}"
@@ -1244,7 +1244,7 @@ mkdir -p "$PREFIX$INSTALL_DIR"
 cp -a "$SRC/docker-compose.yml" "$PREFIX$INSTALL_DIR/" 2>/dev/null || true
 if $BUILD; then
   for f in Dockerfile Dockerfile.node .dockerignore VERSION \
-           swg-panel-server swg-agent swg-noded swg-sni swg-sub swg-passwd \
+           swg-panel-server swg-agent swg-noded swg-sni swg-relay swg-sub swg-passwd xray_support.py xray_selfhost.py \
            index.html app.css app.js reconcile.js $SUB_WEB; do
     [ -e "$SRC/$f" ] && cp -a "$SRC/$f" "$PREFIX$INSTALL_DIR/" 2>/dev/null || true
   done

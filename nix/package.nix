@@ -71,7 +71,7 @@ let
   # lib.fileset throws on a path that does not exist, so a shipped file lost to .gitignore or a
   # rename fails EVALUATION rather than producing a quietly incomplete store path (V.6b).
   shipped = fs.unions (map (p: srcRoot + "/${p}")
-    ([ "VERSION" "docker/node-entrypoint.sh" ] ++ programs ++ trees ++ panelWeb ++ subWeb));
+    ([ "VERSION" "docker/node-entrypoint.sh" "xray_support.py" "xray_selfhost.py" ] ++ programs ++ trees ++ panelWeb ++ subWeb));
 
 in
 stdenvNoCC.mkDerivation {
@@ -101,6 +101,8 @@ stdenvNoCC.mkDerivation {
 
     # ── panel: program + SPA + VERSION in one directory ──
     install -Dm755 swg-panel-server $out/libexec/swg-panel/swg-panel-server
+    install -Dm644 xray_support.py $out/libexec/swg-panel/xray_support.py
+    install -Dm644 xray_selfhost.py $out/libexec/swg-panel/xray_selfhost.py
     install -Dm644 VERSION.stamped  $out/libexec/swg-panel/VERSION
     for f in ${lib.concatStringsSep " " panelWeb}; do
       install -Dm644 "$f" "$out/libexec/swg-panel/$f"
@@ -109,6 +111,8 @@ stdenvNoCC.mkDerivation {
 
     # ── swg-sub: its own directory, its own copy of VERSION (separate unit, user and TLS dir) ──
     install -Dm755 swg-sub          $out/libexec/swg-sub/swg-sub
+    install -Dm644 xray_support.py $out/libexec/swg-sub/xray_support.py
+    install -Dm644 xray_selfhost.py $out/libexec/swg-sub/xray_selfhost.py
     install -Dm644 VERSION.stamped  $out/libexec/swg-sub/VERSION
     for f in ${lib.concatStringsSep " " subWeb}; do
       install -Dm644 "$f" "$out/libexec/swg-sub/$f"
@@ -117,6 +121,8 @@ stdenvNoCC.mkDerivation {
 
     # ── node: swg-sni sits beside swg-noded because that is the first place it is looked for ──
     install -Dm755 swg-noded        $out/libexec/swg-noded/swg-noded
+    install -Dm644 xray_support.py $out/libexec/swg-noded/xray_support.py
+    install -Dm644 xray_selfhost.py $out/libexec/swg-noded/xray_selfhost.py
     install -Dm755 swg-sni          $out/libexec/swg-noded/swg-sni
     install -Dm755 swg-relay        $out/libexec/swg-noded/swg-relay
     install -Dm644 VERSION.stamped  $out/libexec/swg-noded/VERSION

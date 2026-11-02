@@ -78,6 +78,7 @@ export function scKindByName(name) {
   // paths; the two must answer one question with one piece of code, or the answer depends on whether a node
   // has synced. Asked of the record we already hold, not via wdttOn(n.id, …) — see the note on the helpers.
   for (const n of (Store.nodes || [])) {
+    if ((n.xray_cfg || {})[name]) return "xray";
     if (wdttCfgClaims(n.wdtt_cfg, name)) return "wdtt";
     if (csqttCfgClaims(n.csqtt_cfg, name)) return "csqtt";
   }
@@ -85,12 +86,13 @@ export function scKindByName(name) {
 }
 // Does this roster TARGET land on a self-contained turn instance? The authoritative form of util.js's
 // isSelfContainedTarget: targetType consults the roster `type`, then the node's live set, then the name.
-export const isSelfContainedTgt = (t) => !!t && (targetType(t) === "wdtt" || targetType(t) === "csqtt");
+export const isSelfContainedTgt = (t) => !!t && ["wdtt", "csqtt", "xray"].includes(targetType(t));
 export const isWdttName = (name) => scKindByName(name) === "wdtt";
 export const isCsqttName = (name) => scKindByName(name) === "csqtt";
 export const isSelfContainedName = (name) => !!scKindByName(name);
 
 export function kindOf(node, iface, type) {
+  if (type === "xray" || (((Store.nodes || []).find(record => record.id === node) || {}).xray_cfg || {})[iface]) return "xray";
   if (type === "wdtt" || wdttOn(node, iface) || isWdttIface(iface)) return "wdtt";
   if (type === "csqtt" || csqttOn(node, iface) || isCsqttIface(iface)) return "csqtt";   // raw-TUN self-contained kind (not in describe; keyed by the live set, then name/type)
   const m = (Store.describe[node] || {})[iface];
@@ -202,14 +204,15 @@ export function ifaceIsAwg(iface) {
   return false;
 }
 // interface-filter dropdown values: "" / "*" = all · "*awg" / "*wg" / "*wdtt" = all of one type · else an exact name.
-export const ifaceIsAll = v => !v || v === "*" || v === "*awg" || v === "*wg" || v === "*wdtt" || v === "*csqtt";   // an aggregate (multi-iface) filter value
+export const ifaceIsAll = v => !v || ["*", "*awg", "*wg", "*wdtt", "*csqtt", "*xray"].includes(v);
 // Does an interface pass the filter value? Pass the roster TARGET as `t` wherever there is one (every caller
 // has one): its `type` is authoritative, so a wdtt/csqtt deployment on an operator-named interface is filtered
 // as its real kind instead of falling through the negative "*wg" test into the WireGuard bucket. Without a
 // target this asks the fleet by name (scKindByName), which is still far better than the bare pattern.
 export function ifaceMatch(iface, filter, t) {
   if (!filter || filter === "*") return true;
-  const sc = t ? (kind => kind === "wdtt" || kind === "csqtt" ? kind : null)(targetType(t)) : scKindByName(iface);
+  const sc = t ? (kind => ["wdtt", "csqtt", "xray"].includes(kind) ? kind : null)(targetType(t)) : scKindByName(iface);
+  if (filter === "*xray") return sc === "xray";
   if (filter === "*wdtt") return sc === "wdtt";
   if (filter === "*csqtt") return sc === "csqtt";
   const awg = t ? targetType(t) === "awg" : ifaceIsAwg(iface);
@@ -361,6 +364,7 @@ export function pendingCsqttPorts(node) {
     if (!c) continue;
     const d = Number(String(c.listen || "").split(":").pop()); if (d) out.push(d);
   }
+  for (const config of Object.values(nrec.xray_cfg || {})) out.push(Number(config.port));
   return out;
 }
 export function suggestPort(node, kind, extra) {

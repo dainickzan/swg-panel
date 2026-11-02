@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # update.sh — update an existing swg-panel install in place, from the latest GitHub code.
 #
-#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- update
+#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- update
 #
 # bootstrap.sh fetches the latest repo and runs this from it. It AUTO-DETECTS which
 # components are installed — covering every shape (bare-metal host / master / node,
@@ -1674,7 +1674,7 @@ ensure_panel_unit_warn(){   # DETECT + WARN only — never recreate. The panel u
   # …from the ref this box follows (main pinned here re-installed main over a dev box: IN-8); a ref other than main rides
   # INSIDE the string, as bootstrap's own hand-back does — sudo drops SWG_REF in front of it
   local _r="${SWG_REF:-main}" _p=""; [ "$_r" = main ] || _p="SWG_REF=$(printf '%q' "$_r"); "
-  warn "    sudo bash -c \"$_p\$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/$_r/bootstrap.sh)\" -- host"
+  warn "    sudo bash -c \"$_p\$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/$_r/bootstrap.sh)\" -- host"
 }
 
 ensure_netctl_docker(){   # the docker address helper on a panel-bearing docker host: units HEALED if missing, the drainer at this release.
@@ -1924,7 +1924,7 @@ if ! $NODE_ONLY && [ -f "$PANEL_DIR/swg-panel-server" ]; then
     info "updating bare-metal swg-panel ($PANEL_DIR)"
     ensure_log_ns swg-panel swg-panel-server.service swg-sub.service swg-netctl.service swg-update.service
     ensure_panel_journal
-    for f in swg-panel-server index.html app.css app.js reconcile.js turn-artifacts.js; do
+    for f in swg-panel-server xray_support.py xray_selfhost.py index.html app.css app.js reconcile.js turn-artifacts.js; do
       [ -f "$SRC/$f" ] && run cp "$SRC/$f" "$PANEL_DIR/"
     done
     # whole vendor/ dir — the buildless SPA needs the vendored Preact + htm ESM, not just qrcode
@@ -1949,6 +1949,7 @@ if ! $NODE_ONLY && [ -f "$PANEL_DIR/swg-panel-server" ]; then
     # Inert unless enabled in the panel.
     if [ -f "$SUB_DIR/swg-sub" ] && [ -f "$SRC/swg-sub" ]; then
       run cp "$SRC/swg-sub" "$SUB_DIR/"; run chmod 755 "$SUB_DIR/swg-sub"
+      run cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$SUB_DIR/"
       for f in $SUB_WEB; do [ -f "$SRC/$f" ] && run cp "$SRC/$f" "$SUB_DIR/"; done
       [ -f "$SRC/vendor/qrcode.js" ] && { run mkdir -p "$SUB_DIR/vendor"; run cp "$SRC/vendor/qrcode.js" "$SUB_DIR/vendor/"; }
       stamp "$SUB_DIR"
@@ -2023,6 +2024,7 @@ if [ -f "$NODED_DIR/swg-noded" ] || [ -f "$AGENT_DIR/swg-agent" ]; then
     [ -d "$AGENT_DIR" ] && [ -f "$SRC/swg-agent" ] && { run cp "$SRC/swg-agent" "$AGENT_DIR/"; run chmod 755 "$AGENT_DIR/swg-agent"; }
     if [ -d "$NODED_DIR" ] && [ -f "$SRC/swg-noded" ]; then
       run cp "$SRC/swg-noded" "$NODED_DIR/"; run chmod 755 "$NODED_DIR/swg-noded"
+      run cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$NODED_DIR/"
     fi
     [ -d "$NODED_DIR" ] && [ -f "$SRC/swg-sni" ] && { run cp "$SRC/swg-sni" "$NODED_DIR/"; run chmod 755 "$NODED_DIR/swg-sni"; }   # SNI-router classifier
     [ -d "$NODED_DIR" ] && [ -f "$SRC/swg-relay" ] && { run cp "$SRC/swg-relay" "$NODED_DIR/"; run chmod 755 "$NODED_DIR/swg-relay"; }   # TCP-terminating relay
@@ -2227,11 +2229,11 @@ PYCON
 import re, sys
 comp, envf = sys.argv[1], sys.argv[2]
 text = orig = open(comp).read()
-TURN = ('      SWG_TURN_IMAGE: "${SWG_TURN_IMAGE:-ghcr.io/sanityprotocol/swg-node:${SWG_IMAGE_TAG:-latest}}"'
+TURN = ('      SWG_TURN_IMAGE: "${SWG_TURN_IMAGE:-ghcr.io/dainickzan/swg-node:${SWG_IMAGE_TAG:-latest}}"'
         '  # image swg-noded runs each turn-proxy container from')
 
 # a) the service images themselves
-pat = re.compile(r'^(\s*image:\s*ghcr\.io/sanityprotocol/swg-(?:panel|node)):([^\s$]+)\s*$', re.M)
+pat = re.compile(r'^(\s*image:\s*ghcr\.io/(?:sanityprotocol|dainickzan)/swg-(?:panel|node)):([^\s$]+)\s*$', re.M)
 pins = {m.group(2) for m in pat.finditer(text)}
 text = pat.sub(lambda m: m.group(1) + ":${SWG_IMAGE_TAG:-latest}", text)
 
@@ -2239,8 +2241,8 @@ text = pat.sub(lambda m: m.group(1) + ":${SWG_IMAGE_TAG:-latest}", text)
 #    why a node moved to a new tag kept starting its turn proxies from main: the variable it reads never
 #    followed the tag. Rewrite the stale default; a value the operator set explicitly in .env still wins.
 # the trailing comment is part of the shipped line, so the pattern has to tolerate one
-tpat = re.compile(r'^\s*SWG_TURN_IMAGE:\s*"?\$\{SWG_TURN_IMAGE:-ghcr\.io/sanityprotocol/swg-node:(?!\$)[^}"]*\}"?[^\n]*$', re.M)
-text = tpat.sub(TURN, text)
+tpat = re.compile(r'^\s*SWG_TURN_IMAGE:\s*"?\$\{SWG_TURN_IMAGE:-ghcr\.io/(sanityprotocol|dainickzan)/swg-node:(?!\$)[^}"]*\}"?[^\n]*$', re.M)
+text = tpat.sub(lambda match: TURN.replace("dainickzan", match.group(1)), text)
 
 # c) ...or add it, when the compose predates the variable entirely
 if "SWG_TURN_IMAGE" not in text:
@@ -2447,7 +2449,7 @@ PYDRIFT
     if should_update "docker ($prof, source build)" "$DOCKER_DIR"; then
       info "restaging source + rebuilding ($DOCKER_DIR)"
       for f in Dockerfile Dockerfile.node .dockerignore VERSION \
-               swg-panel-server swg-agent swg-noded swg-sni swg-relay swg-sub swg-passwd \
+               swg-panel-server swg-agent swg-noded swg-sni swg-relay swg-sub swg-passwd xray_support.py xray_selfhost.py \
                index.html app.css app.js reconcile.js $SUB_WEB; do
         [ -e "$SRC/$f" ] && run cp -a "$SRC/$f" "$DOCKER_DIR/"
       done

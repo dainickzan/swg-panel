@@ -1019,6 +1019,8 @@ fi
 info "Agent + daemon"
 for f in swg-agent swg-noded; do [ -f "$SRC/$f" ] || die "missing $f beside this script (unzip the bundle here)"; done
 mkdir -p "$PREFIX$AGENT_DIR" "$PREFIX$NODED_DIR"; cp "$SRC/swg-agent" "$PREFIX$AGENT_DIR/"; cp "$SRC/swg-noded" "$PREFIX$NODED_DIR/"
+cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$PREFIX$NODED_DIR/"
+ensure_xray_runtime
 [ -f "$SRC/swg-sni" ] && { cp "$SRC/swg-sni" "$PREFIX$NODED_DIR/"; chmod 755 "$PREFIX$NODED_DIR/swg-sni"; }   # SNI-router classifier (routing_mode=sni)
 [ -f "$SRC/swg-relay" ] && { cp "$SRC/swg-relay" "$PREFIX$NODED_DIR/"; chmod 755 "$PREFIX$NODED_DIR/swg-relay"; }   # TCP-terminating relay (accelerated mesh legs); inert until the panel asks for it
 chmod 755 "$PREFIX$AGENT_DIR/swg-agent" "$PREFIX$NODED_DIR/swg-noded"; ok "installed agent + daemon"

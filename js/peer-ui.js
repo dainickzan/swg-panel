@@ -46,6 +46,7 @@ import { AppDropdown, OsDropdown, ForkTag, turnForkPlatforms, WDTT_COLOR, appNam
 import { h, Fragment } from "preact";
 import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import htm from "htm";
+import { XrayConfig } from "./xray.js";
 
 const html = htm.bind(h);
 
@@ -1287,6 +1288,7 @@ export function UserEditCard({ user, done }) {
 // A peer deployment card. A WDTT deployment is keyless — it has no WG config/QR, so it dispatches to a dedicated
 // card that shows the wdtt:// client link instead of the (empty) WireGuard config. Everything else is WG/AWG.
 export function TargetCard(props) {
+  if (targetType(props.t) === "xray") return html`<${XrayConfig} peer=${props.peer} target=${props.t} bare=${true}/>`;
   const tt = targetType(props.t);
   return tt === "csqtt" ? html`<${TargetCardCsqtt} ...${props}/>`
        : tt === "wdtt" ? html`<${TargetCardWdtt} ...${props}/>`

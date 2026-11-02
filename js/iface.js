@@ -13,6 +13,7 @@
 import { T, Trich, Tsplit, plural, pluralWord, srvText, fmtNum } from "./i18n.js";
 import { esc, tkey, seen, dur, ago, fmtBytes, ipOf, ipChoices, portOf, listenAddr, ipPickerVal, V, agoAge, isMobile } from "./util.js";
 import { Store, api, bus, useStore } from "./store.js";
+import { openXray, openSelfHostedXray, XrayDetail } from "./xray.js";
 import { go } from "./router.js";
 import { pickThemed, toThemed, IFACE_COLOR_DEFAULTS } from "./theme.js";
 import {
@@ -590,6 +591,7 @@ export function IfaceDetail({ node: rawNode, iface: rawIface }) {
   // WDTT owns its interface (reported in snap.wdtt, not describe) → a dedicated detail (server info + users),
   // not the wg/awg config view. Keyed off the read-back so it's never mistaken for a missing/ghost wg iface.
   const _wInst = ((Store.stats[node] || {}).wdtt || []).find(w => w && w.iface === iface);
+  if ((nrec.xray_cfg || {})[iface]) return html`<${XrayDetail} node=${node} iface=${iface}/>`;
   // A WDTT server the panel still WANTS but the node no longer reports (rebuilt box, or a node running a build
   // without WDTT support) has no snapshot entry at all — without this it fell through to the wg/awg views and
   // showed up as a ghost interface, or as nothing. Route it here on the desired config alone; WdttIfaceDetail
@@ -1430,6 +1432,8 @@ export function LoadIfaceSheet({ node, pre, ghost, back }) {
       <div class=${"chiprow" + (ghost ? "" : " proto3")}>
         <button class=${"chip c-wg" + (proto === "wg" ? " on" : "")} onClick=${() => pickProto("wg")}>WireGuard</button>
         <button class=${"chip c-awg" + (proto === "awg" ? " on" : "")} onClick=${() => pickProto("awg")}>AmneziaWG</button>
+        ${ghost || !nrec.xray_capable ? null : html`<button class="chip" style="color:#A78BFA" onClick=${() => openXray(node)}>Xray</button>`}
+        ${ghost || !nrec.xray_selfhost_capable ? null : html`<button class="chip" style="color:#A78BFA" onClick=${() => openSelfHostedXray(node)}>${T("Xray · steal oneself")}</button>`}
         ${ghost || !wdttOk ? null : html`<button class=${"chip c-wdtt" + (proto === "wdtt" ? " on" : "")} onClick=${() => pickProto("wdtt")}>WDTT</button>`}
         ${ghost || !csqttOk ? null : html`<button class=${"chip c-csqtt" + (proto === "csqtt" ? " on" : "")} onClick=${() => pickProto("csqtt")}>CSQTT</button>`}
         ${ghost ? null : html`<button type="button" class=${"adoptsw" + (adoptMode ? " on" : "")} aria-pressed=${adoptMode}
@@ -1571,6 +1575,7 @@ export function openEditIface(node, iface) { openModal(html`<${EditIfaceSheet} n
  */
 export function openIfaceEditor(node, iface) {
   const k = iTypeOf(node, iface);
+  if (k === "xray") return openXray(node, iface);
   if (k === "csqtt") return openEditCsqtt(node, iface);
   if (k === "wdtt") return openEditWdtt(node, iface);
   return openEditIface(node, iface);

@@ -525,7 +525,8 @@ export const Store = {
     const base = this.ifacesOf(node).filter(i => !this.ifaceIsSystem(node, i));
     const wd = ((this.stats[node] || {}).wdtt || []).map(w => w && w.iface).filter(Boolean);
     const cs = ((this.stats[node] || {}).csqtt || []).map(c => c && c.iface).filter(Boolean);
-    return Array.from(new Set([...base, ...wd, ...cs]));
+    const xr = Object.keys((this.nodes.find(record => record.id === node) || {}).xray_cfg || {});
+    return Array.from(new Set([...base, ...wd, ...cs, ...xr]));
   },
   peer(id) { return this.recon.peers.find(p => p.id === id); },
   user(id) { return this.recon.users.find(u => u.id === id); },

@@ -11,6 +11,22 @@
 # they were added. Keep this in sync with STATIC in swg-sub; nothing else needs touching when an asset is added.
 SUB_WEB="sub.html sub.js sub.css turn-artifacts.js"
 
+ensure_xray_runtime(){
+  [ "${XRAY_RUNTIME:-docker}" = docker ] || return 0
+  info "Xray interfaces use isolated Docker containers; existing WG/AWG remains native"
+  if ! have docker; then
+    if $DRYRUN || have apt-get; then
+      run apt-get update -qq
+      run apt-get install -y docker.io
+    else
+      warn "Install Docker with your distribution's package manager to enable Xray interfaces"
+      return 0
+    fi
+  fi
+  run systemctl enable --now docker
+  $DRYRUN || docker info >/dev/null 2>&1 || die "Docker is unavailable; install/start it or set XRAY_RUNTIME=off"
+}
+
 # ── these installers must REFUSE on a declaratively managed host ────────────────────────────────
 # WHY: on NixOS `bootstrap.sh` APPEARS to work. `/` is writable and `nixos-rebuild` never touches
 # /opt, so `mkdir -p /opt/swg-noded && cp` succeeds; the run then fails somewhere later on PATH or a
@@ -1398,7 +1414,9 @@ print_proxy_configs(){
 # qualification, round 8). The texts live here, once; every writer renders them. The wrapper takes the ref the box
 # follows (baked in: nothing else on the box records it). The check is a BARE box's (install-host, update.sh): a Docker
 # box writes its own in write_docker_updater — there a node's trigger is the container's, which --node-only would skip.
-swg_update_wrapper_text(){ local _swg_ref="${1:-main}"
+swg_update_wrapper_text(){ local _swg_ref="${1:-main}" _swg_repo="${SWG_REPO:-https://github.com/dainickzan/swg-panel}"
+  _swg_repo="${_swg_repo%.git}"; _swg_repo="${_swg_repo%/}"; _swg_repo="${_swg_repo#https://github.com/}"
+  [[ "$_swg_repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || _swg_repo=dainickzan/swg-panel
   cat <<WRAP
 #!/usr/bin/env bash
 # ⚠️ THE WHOLE BODY IS ONE COMPOUND COMMAND, AND THE \`exit\` AT THE END IS PART OF THE FIX.
@@ -1425,7 +1443,7 @@ set -euo pipefail
 # re-baked this very file back to main (measured on swgt: 1.8.6-beta -> 1.8.5-beta, wrapper dev -> main, on one press
 # of Update; and on a box installed FRESH from a branch). Exporting the URL (rather than forcing SWG_REF) keeps an
 # operator's own \$SWG_BOOTSTRAP_URL authoritative — their URL then decides the ref.
-URL="\${SWG_BOOTSTRAP_URL:-https://raw.githubusercontent.com/SanityProtocol/swg-panel/${_swg_ref}/bootstrap.sh}"
+URL="\${SWG_BOOTSTRAP_URL:-https://raw.githubusercontent.com/${_swg_repo}/${_swg_ref}/bootstrap.sh}"
 export SWG_BOOTSTRAP_URL="\$URL"
 # ⚠️ DOWNLOADED FIRST, RUN SECOND — AND A SECOND DOOR WHEN RAW CANNOT BE HAD. tests/update_bootstrap_fallback_selftest.py
 # runs this text, and every writer of it.

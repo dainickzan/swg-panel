@@ -98,6 +98,7 @@ export function rotateAllUserKeys(user, after) {
             // replaced would rotate only the FIRST applicable kind while reporting the whole run done — leaving a
             // peer whose QR never came back (rotatePeerKeys is what rebuilds the config the card renders).
             let did = false;
+            if (p.xray_uuid) { await api.post("/api/xray-peer/rotate", { peer_id: p.id }); did = true; }
             if (p.csqtt_password) { await api.csqttPeerRotate({ peer_id: p.id }); did = true; }   // new access password
             if (p.wdtt_password)  { await api.wdttPeerRotate({ peer_id: p.id });  did = true; }   // new WRAP password
             // LAST: this one changes the pubkey, and the two above address the peer by id, so order is safe.
@@ -122,7 +123,8 @@ export function rotateParts(peer) {
   const hasCsqtt = !!p.csqtt_password || kinds.includes("csqtt"), hasWdtt = !!p.wdtt_password || kinds.includes("wdtt");
   const hasKeyed = (p.targets || []).some(t => !isSelfContainedTgt(t));
   const mixed = hasKeyed && (hasCsqtt || hasWdtt);
-  return { p, hasCsqtt, hasWdtt, hasKeyed, mixed, none: !hasKeyed && !hasCsqtt && !hasWdtt,
+  const hasXray = !!p.xray_uuid || kinds.includes("xray");
+  return { p, hasCsqtt, hasWdtt, hasXray, hasKeyed, mixed: mixed || (hasKeyed && hasXray), none: !hasKeyed && !hasCsqtt && !hasWdtt && !hasXray,
     title: mixed ? T("Rotate credentials") : !hasKeyed ? T("Rotate link") : T("Rotate keys") };
 }
 export const rotateOneLabel = peer => rotateParts(peer).title;
@@ -136,9 +138,9 @@ export function rotateOnePeerKeys(peer) {
   // subscription says so in a toast of its own when the publish ends (F83), held 9 s as it asks for an action (F93) — the outcome never
   // waits on its vault prompt (F86, F92),
   // and a missed publish is not a partial rotate (F87).
-  const { p, hasCsqtt, hasWdtt, hasKeyed, mixed, none, title } = rotateParts(peer);
+  const { p, hasCsqtt, hasWdtt, hasXray, hasKeyed, mixed, none, title } = rotateParts(peer);
   if (none) return toast(T("This peer has nothing to rotate."), "err");   // F67: never "rotated" with no call made
-  const body = mixed ? T("This peer holds several credentials — a WireGuard keypair and an access password per turn server. All of them are replaced: every config, QR and link this peer already handed out stops working and must be re-imported.")
+  const body = hasXray ? T("All credentials held by this peer are replaced. Its current links and configs stop working and must be re-imported.") : mixed ? T("This peer holds several credentials — a WireGuard keypair and an access password per turn server. All of them are replaced: every config, QR and link this peer already handed out stops working and must be re-imported.")
     : !hasKeyed ? (hasCsqtt ? T("A fresh access password is generated. The current csqtt link stops working — send the user their new link (from the subscription page) to re-import.")
                             : T("A fresh access password is generated. The current WDTT link stops working — send the user their new link (from the subscription page) to re-import."))
     : T("A fresh keypair and preshared key are generated. The current config stops working — you'll need to send out the fresh QR / config to re-import. Useful if a config may have leaked.");
@@ -152,6 +154,7 @@ export function rotateOnePeerKeys(peer) {
           if (r && r.ok) done.push(name); else why.push((srvText(r) || T("Rotate failed.")).replace(/[.\s]+$/, ""));
           return r;
         };
+        if (hasXray) await step(T("the Xray link"), () => api.post("/api/xray-peer/rotate", { peer_id: p.id }));
         if (hasCsqtt) await step(T("the csqtt link"), () => api.csqttPeerRotate({ peer_id: p.id }));
         if (hasWdtt) await step(T("the WDTT link"), () => api.wdttPeerRotate({ peer_id: p.id }));
         const kr = hasKeyed ? await step(T("the keypair"), () => rotatePeerKeys(p)) : null;   // LAST: this changes the pubkey, and the two above address by id

@@ -78,7 +78,7 @@ export function PeersScreen() {
   if (peersView.node !== "*" && !fleet.some(n => n.id === peersView.node)) peersView.node = multiServer ? "*" : (fleet[0] ? fleet[0].id : "");
   const node = peersView.node;   // node = id, or "*" for all servers
 
-  const allIfaces = Array.from(new Set(Object.keys(Store.describe).flatMap(n => Store.userIfacesOf(n)))).sort();   // user ifaces only — mesh links (swg_*) are not peer-bearing
+  const allIfaces = Array.from(new Set(Store.nodes.flatMap(n => Store.userIfacesOf(n.id)))).sort();
   const ifaceOpts = node === "*" ? allIfaces : Store.userIfacesOf(node);
   // default interface: aggregate when several exist (or all-servers); else the only one.
   const ifaceDefault = () => (node === "*" || ifaceOpts.length > 1) ? "*" : (ifaceOpts[0] || "");
@@ -274,7 +274,7 @@ export function ConnectionsScreen() {
   const bump = () => force(x => x + 1);
   const reset = () => { connView.page = 1; bump(); };   // any filter/mode change → back to page 1
   const mode = connView.mode, q = connView.q.toLowerCase();
-  const allIfaces = Array.from(new Set(Object.keys(Store.describe).flatMap(n => Store.userIfacesOf(n)))).sort();
+  const allIfaces = Array.from(new Set(Store.nodes.flatMap(n => Store.userIfacesOf(n.id)))).sort();
   const ifaceOpts = connView.node ? Store.userIfacesOf(connView.node) : allIfaces;
   if (!ifaceIsAll(connView.iface) && !ifaceOpts.includes(connView.iface)) connView.iface = "";
   const setMode = m => { connView.mode = m; reset(); };
@@ -563,7 +563,7 @@ function GroupRow({ g, st, q }) {
 const memberPasses = u => userOnNodeIface(u, usersView.node, usersView.iface) && (!usersView.online || u.onlineCount > 0);
 const filtersOn = () => !!(usersView.node || usersView.iface || usersView.online);
 function RosterFilters({ reset }) {
-  const allIfaces = Array.from(new Set(Object.keys(Store.describe).flatMap(n => Store.userIfacesOf(n)))).sort();
+  const allIfaces = Array.from(new Set(Store.nodes.flatMap(n => Store.userIfacesOf(n.id)))).sort();
   const ifaceOpts = usersView.node ? Store.userIfacesOf(usersView.node) : allIfaces;
   if (!ifaceIsAll(usersView.iface) && !ifaceOpts.includes(usersView.iface)) usersView.iface = "";
   return html`<${Fragment}>

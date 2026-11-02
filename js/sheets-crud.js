@@ -11,6 +11,7 @@ import { T, Trich, Tsplit, plural, srvText } from "./i18n.js";
 import { esc, tkey, V, BASE, seen, panelNowS, configErrors, orderedTargets, isPrimaryTarget, useStableOrder,
          isSelfContainedKind, ipOf, portOf, ipPickerVal, isMobile } from "./util.js";
 import { Store, api, bus, useStore } from "./store.js";
+import { bootCmd, shellQuote } from "./install.js";
 import { NODE_COLOR_DEFAULT, NODE_CREATE_DEFAULT, toThemed } from "./theme.js";
 import { go } from "./router.js";
 import { targetType, routerCapable, iTypeOf, kindOf, nodeStale, wdttOn, suggestIface, suggestSubnet, suggestPort,
@@ -166,6 +167,8 @@ export function allTargets() {
       if (!out.some(t => t.node === n.id && t.iface === iface)) out.push({ node: n.id, iface });
     for (const iface of Object.keys(n.csqtt_cfg || {}))
       if (!out.some(t => t.node === n.id && t.iface === iface)) out.push({ node: n.id, iface });
+    for (const iface of Object.keys(n.xray_cfg || {}))
+      if (!out.some(t => t.node === n.id && t.iface === iface)) out.push({ node: n.id, iface });
   }
   return out;
 }
@@ -228,7 +231,7 @@ export function TargetPicker({ prefill, exclude, onChange, initial, pubPeer }) {
   // a plain tag.
   const pubHave = useMemo(() => new Set(((pubPeer && pubPeer.targets) || []).map(t => tkey(t.node, t.iface))),
                           [pubPeer && pubPeer.targets]);
-  const all = useMemo(allTargets, [Store.describe, Store.stats]);
+  const all = useMemo(allTargets, [Store.describe, Store.stats, Store.nodes]);
   // locked: launched from one interface — show only that target, no toggling, just the IP.
   const locked = !!(prefill && prefill.lock && prefill.node && prefill.iface);
   const baseAll = locked ? all.filter(t => t.node === prefill.node && t.iface === prefill.iface)
@@ -248,6 +251,7 @@ export function TargetPicker({ prefill, exclude, onChange, initial, pubPeer }) {
   const toggle = (node, iface) => {
     const k = tkey(node, iface);
     if (sel[k]) setSel(s => { const n = { ...s }; delete n[k]; return n; });
+    else if (iTypeOf(node, iface) === "xray") setSel(s => ({ ...s, [k]: { node, iface, ip: "", xray: true } }));
     else if (iTypeOf(node, iface) === "wdtt") setSel(s => ({ ...s, [k]: { node, iface, ip: "", wdtt: true } }));   // WDTT mints the client IP on connect — no address to pick
     else if (iTypeOf(node, iface) === "csqtt") setSel(s => ({ ...s, [k]: { node, iface, ip: "", csqtt: true } }));   // csqtt mints the address on connect too
     else allocIp(node, iface);
@@ -265,10 +269,11 @@ export function TargetPicker({ prefill, exclude, onChange, initial, pubPeer }) {
   useEffect(() => {                                  // preselect from prefill once targets are known
     if (!targets.length || Object.keys(sel).length || (initial && initial.length)) return;
     if (prefill && prefill.node && prefill.iface) {
+      if (iTypeOf(prefill.node, prefill.iface) === "xray") { setSel({ [tkey(prefill.node, prefill.iface)]: { node: prefill.node, iface: prefill.iface, ip: "", xray: true } }); return; }
       if (iTypeOf(prefill.node, prefill.iface) === "wdtt") setSel({ [tkey(prefill.node, prefill.iface)]: { node: prefill.node, iface: prefill.iface, ip: "", wdtt: true } });   // WDTT: select without allocating an address
       else if (iTypeOf(prefill.node, prefill.iface) === "csqtt") setSel({ [tkey(prefill.node, prefill.iface)]: { node: prefill.node, iface: prefill.iface, ip: "", csqtt: true } });
       else allocIp(prefill.node, prefill.iface);
-    } else if (prefill && prefill.node) targets.filter(t => t.node === prefill.node).slice(0, 1).forEach(t => allocIp(t.node, t.iface));
+    } else if (prefill && prefill.node) targets.filter(t => t.node === prefill.node).slice(0, 1).forEach(t => toggle(t.node, t.iface));
   }, [all]);
   useEffect(() => { onChange(Object.values(sel)); }, [sel]);
 
@@ -297,7 +302,7 @@ export function TargetPicker({ prefill, exclude, onChange, initial, pubPeer }) {
           // `ity` (the interface's real type), not just the flag set when a row is TOGGLED: an already-deployed
           // target is seeded straight from the peer, so it never went through toggle and rendered an editable
           // address box for a self-contained server — which mints the client IP itself on connect and can't be told one.
-          ? html`<span class="topt-ip faint" title=${T("The server assigns the address on connect")}>${T("val|auto IP")}</span>`
+          ? (ity === "xray" ? null : html`<span class="topt-ip faint" title=${T("The server assigns the address on connect")}>${T("val|auto IP")}</span>`)
           : (s ? html`<input class=${"topt-ip " + (s.ip && !V.ipv4(s.ip) ? "bad" : "")} value=${s.ip} placeholder=${s.ipHint || T("address")} title=${s.ip && !V.ipv4(s.ip) ? T("not a valid IPv4 address") : ""} onInput=${e => setIp(k, e.target.value)}/>` : null)}
         ${/* a phone shows no title: the reason goes under the field (MOBILE-PLAN hook 5) */""}
         ${s && isMobile() && s.ip && !V.ipv4(s.ip) ? html`<span class="hint err topt-err">${T("not a valid IPv4 address")}</span>` : null}
@@ -926,6 +931,7 @@ export function EditPeerSheet({ peer, focus, done, flash, child }) {
   const isKeyless = !hasKeyed;   // EVERY deployment is self-contained: panel-owned password, no browser keypair
   const isWdttPeer = hasWdtt, isCsqttPeer = hasCsqtt;   // (rotate-link wording below)
   const rotate = () => {
+    if (peer.xray_uuid) return rotateOnePeerKeys(peer);
     // A MIXED peer holds several independent credentials — a keypair for its wg/awg deployments and one access
     // password per keyless kind — so rotating it means rotating all of them, cumulatively (the same shape the
     // bulk rotate in peer-actions.js uses). The single-kind cases below are what that reduces to.
@@ -2154,12 +2160,11 @@ export function NodeCreateSheet() {
     ${msg ? html`<div class=${"formmsg " + msg.k}>${msg.t}</div>` : null}
   <//>`;
 }
-export const BOOTSTRAP_URL = "https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh";
+export { BOOTSTRAP_URL, bootCmd } from "./install.js";
 // The one-liner every screen hands out: `sudo bash -c "$(curl …)" -- <args>`, never `curl … | sudo bash -s <args>`. Under the
 // pipe, sudo-rs (Ubuntu 26.04's sudo) runs the script in the background of the terminal and its first question freezes it
 // (bootstrap.sh _swg_tty_fg; client report 2026-10-06). Handed to `bash -c`, sudo's stdin is the terminal — with sudo-rs
 // and classic sudo alike, root or not. transfer_parse (the panel) reads both shapes, so commands already copied still work.
-export const bootCmd = args => `sudo bash -c "$(curl -fsSL ${BOOTSTRAP_URL})" -- ${args}`;
 
 /* Enrolment for a node whose installation is its configuration's. NOT a command — the installer is
    the wrong shape here twice over: it would write into /opt on a host whose own tooling cannot see
@@ -2232,7 +2237,7 @@ export function nixNodeSteps(host, endpoint, token, recovery, mode, reserved) {
   const flake = [
     "{",
     '  inputs.nixpkgs.url   = "github:NixOS/nixpkgs/nixos-25.11";   # ← the channel `nixos-version` prints: any other one changes the whole OS',
-    '  inputs.swg-panel.url = "github:SanityProtocol/swg-panel";',
+    '  inputs.swg-panel.url = "github:dainickzan/swg-panel";',
     "  outputs = { self, nixpkgs, swg-panel }: {",   // i18n-keys: generated Nix — file text, copied verbatim
     "    nixosConfigurations.swg = nixpkgs.lib.nixosSystem {",   // i18n-keys: generated Nix — file text, copied verbatim
     '      system = "x86_64-linux";',
@@ -2286,8 +2291,9 @@ export function NodeTokenSheet({ name, token, isNew, kind, platform, endpoint, r
   // the address a node dials: the panel's confirmed public one (what every sync tells the fleet), this tab's own only when none is
   // set — a panel reached through an SSH tunnel or another name handed out a command that pointed nowhere (OE, 1.8.9)
   const host = String(Store.panelPublicUrl || "").trim().replace(/\/+$/, "") || `${location.origin}${BASE}`;
-  const bare = bootCmd(`node -key ${token} -host ${host}`);
-  const docker = bootCmd(`docker node -key ${token} -host ${host}`);
+  const nodeArgs = `node -key ${shellQuote(token)} -host ${shellQuote(host)}${endpoint ? " -endpoint " + shellQuote(endpoint) : ""}`;
+  const bare = bootCmd(nodeArgs);
+  const docker = bootCmd("docker " + nodeArgs + " --build");
   const nixos = platform === "nixos";
   const fresh = !kind && !nixos;                       // brand-new node → offer BOTH styles as tabs
   /* …and so does a MIGRATION, which is the one moment changing run model is free. The command used to be

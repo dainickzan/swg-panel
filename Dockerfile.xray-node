@@ -1,0 +1,3 @@
+FROM ghcr.io/sanityprotocol/swg-node@sha256:a8c0691b0bfef1769965a5d133000deae69cd1bbedb96a35669fc7c4cf274ea8
+COPY swg-noded xray_support.py xray_selfhost.py /opt/swg-noded/
+RUN sed -i 's/\r$//' /opt/swg-noded/swg-noded && chmod +x /opt/swg-noded/swg-noded

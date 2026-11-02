@@ -19,7 +19,7 @@ import { tkey, seen, fmtBytes, isMobile } from "./util.js";
 import { lossColor, lossColorMesh } from "./charts.js";
 import { Store, api, bus, isCustomKey, customKeyWindow, useStore } from "./store.js";
 import { ifaceIsAwg, ifaceMatch, ifaceIsAll, nodeStale, tgtXfer, tgtSeenAge,
-         isWdttName, isCsqttName, isSelfContainedName } from "./model.js";
+         isWdttName, isCsqttName, isSelfContainedName, scKindByName } from "./model.js";
 import { go } from "./router.js";
 import { statusLabel, Popover, Ic, Tag, toast, inProc, setPendingSection, Sheet, closeModal, openChildOrRoot } from "./ui.js";
 import { subFeatureOn } from "./crypto.js";
@@ -125,9 +125,10 @@ export function ifaceOptGroups(names) {
   // operator-named turn instance used to match no pattern and land in the WireGuard group.
   const wdtt = names.filter(isWdttName);
   const csqtt = names.filter(isCsqttName);
+  const xray = names.filter(name => scKindByName(name) === "xray");
   const awg = names.filter(n => !isSelfContainedName(n) && ifaceIsAwg(n));
   const wg = names.filter(n => !isSelfContainedName(n) && !ifaceIsAwg(n));
-  const groups = [["*awg", "AmneziaWG", awg], ["*wg", "WireGuard", wg], ["*wdtt", "WDTT", wdtt], ["*csqtt", "CSQTT", csqtt]].filter(g => g[2].length);
+  const groups = [["*awg", "AmneziaWG", awg], ["*wg", "WireGuard", wg], ["*wdtt", "WDTT", wdtt], ["*csqtt", "CSQTT", csqtt], ["*xray", "Xray", xray]].filter(g => g[2].length);
   if (groups.length < 2) return names.map(i => ({ value: i, label: i }));   // one kind → flat list (an "All <type>" would just duplicate "All interfaces")
   // "All <type>" shortcut per kind (only when that kind has >1 — else it equals the lone iface), then a group per kind.
   return [...groups.filter(([, , arr]) => arr.length > 1).map(([val, label]) => ({ value: val, label: T("All {v1}", { v1: label }) })),

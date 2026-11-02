@@ -1543,6 +1543,7 @@
     "WDTT": { dark: "#A78BFA", light: "#7C3AED" } };   // WDTT (amurcanov) — a turn-family server; violet, kin to the Turn group accent
   var IFACE_COLORS = { wg: { dark: "#3FD89A", light: "#0E9E63" }, awg: { dark: "#1FC8D6", light: "#0E9BB0" }, wdtt: { dark: "#81B512", light: "#5EAF0E" }, csqtt: { dark: "#F97316", light: "#E5620C" } };
   var THEME = { color: "", light: "", forkOv: {}, ifaceOv: {}, nodeOv: {} };   // set from the served subscription data
+  IFACE_COLORS.xray = { dark: "#A78BFA", light: "#7C3AED" };
   function isLight() {
     var d = document.documentElement.getAttribute("data-theme");   // manual override wins; else the OS preference
     if (d === "light") return true; if (d === "dark") return false;
@@ -1563,7 +1564,7 @@
   function forkColor(fork) { var s = turnServer(fork), d = (s && s.color) || FORK_COLORS_FALLBACK[fork] || { dark: "#8FA8C0", light: "#5E7085" }; return pickThemed(THEME.forkOv[fork], d.dark, d.light); }
   // Self-contained turn-family kinds (own their interface, keyless, address minted on connect) — one place, mirrors
   // the app's isSelfContainedKind. Every shared gate on the sub page reads this so a new such kind is one edit.
-  function isSelfContained(type) { var k = (type || "").toLowerCase(); return k === "wdtt" || k === "csqtt"; }
+  function isSelfContained(type) { var k = (type || "").toLowerCase(); return k === "wdtt" || k === "csqtt" || k === "xray"; }
   function ifaceColor(type) { var k = (type || "").toLowerCase(); if (k !== "awg" && !isSelfContained(k)) k = "wg"; return pickThemed(THEME.ifaceOv[k], IFACE_COLORS[k].dark, IFACE_COLORS[k].light); }
   function nodeColor(nodeId, fallback) { var c = THEME.nodeOv[nodeId]; return (c && (c.dark || c.light)) ? pickThemed(c, fallback, fallback) : fallback; }   // server name in its panel colour
   function modeColor(m) { return m === "turn" ? "#7C5CFF" : ifaceColor(m); }   // Turn = the panel's turn-proxy accent (violet)
@@ -1922,7 +1923,12 @@
     ctrl.redraw = draw;
 
     if (mode === "turn") {
-      if (it.csqtt) {
+      if (it.xray) {
+        srvRow.appendChild(el("span", "scell-tag", "Xray · " + String(it.xray.protocol || "vless").toUpperCase()));
+        ctrl.payload = it.xray.uri; ctrl.ready = true; ctrl.isLink = true; ctrl.hasQR = true; ctrl.ext = "txt";
+        ctrl.wrapCfg = true; ctrl.zoomTail = "Xray"; ctrl.openUri = it.xray.uri; ctrl.app = "Xray-compatible client";
+        draw();
+      } else if (it.csqtt) {
         // A csqtt peer, rendered as a cell IN the Turn group (csqtt is a raw-TUN VK-turn-family server). Keyless:
         // the panel mints the access password, csqtt mints the client address on connect, so the csqtt://connect
         // link carries only the password + node host + UDP port; the VK hashes (peer.vk_hash + the user's VK call
@@ -2257,6 +2263,7 @@
     var peer = row.peer, secret = row.secret, items = [];
     if (mode === "turn") {
       orderedTargets(peer.targets).forEach(function (tt) {
+        if (tt.type === "xray") { items.push({ tgt: tt, xray: tt.xray || {} }); return; }
         // WDTT peer → a cell in the Turn group (a client ships for every OS: anton48/iOS, WDTT app/Android,
         // PWDTT/desktop). Unlike a turn-proxy the WDTT cell has an encoder FALLBACK, so a missing app never hides
         // it — but "don't offer on this OS" is a decision, not a missing app, and must hide it like any other.
@@ -2531,6 +2538,7 @@
                 nx === "qr" ? t("showQR") : nx === "link" ? t("showLink") : (c.isLink ? t("showLink") : t("showConfig")));
       }
       var v = (c.ready && c.payload) ? "" : "hidden";
+      if (c.zoomTail === "Xray") setIcon(dlB, "download", t("dl"));
       dlB.style.visibility = v; shareB.style.visibility = v;   // Connections is not tied to the cell's payload
       // START: enabled whenever the cell is ready. Title reflects what it does — open the app (has a deep-link) or
       // get it (download only). "app" name falls back to a generic label.
@@ -2757,6 +2765,7 @@
       // ≥1 deployment has a proxy forwarding to it (same gate as the admin view).
       var has = { wg: false, awg: false, turn: false };
       liveRows.forEach(function (r) { (r.peer.targets || []).forEach(function (t) {
+        if (t.type === "xray") { has.turn = true; return; }
         if (isSelfContained(t.type)) { if (data.turn_enabled) has.turn = true; return; }   // WDTT + csqtt are turn-family servers → the Turn group (not a WG/AWG deployment)
         if (t.direct !== false) has[t.type === "awg" ? "awg" : "wg"] = true;   // direct:false = the peer publishes this deployment only through its proxies
         if (data.turn_enabled && (t.turn || []).length) has.turn = true;

@@ -140,7 +140,7 @@ in
 
     image = mkOption {
       type = types.str;
-      default = "ghcr.io/sanityprotocol/swg-node:latest";
+      default = "ghcr.io/dainickzan/swg-node:latest";
       description = ''
         The node image. **Pin it by digest** — `ghcr.io/sanityprotocol/swg-node@sha256:…` — if you
         want the container arm to give you what the store gives the native one: a `nixos-rebuild

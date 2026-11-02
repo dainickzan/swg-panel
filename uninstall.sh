@@ -892,7 +892,7 @@ docker_cleanup_if_last(){   # shared bits (network/images/data dir) — only onc
     # image it had, while the uninstaller reported having removed them. Measured on a pinned box: six
     # images, 1.5 GB, still present after an uninstall that was told REMOVE_DOCKER_IMAGES=y.
     [ "$RMI" = yes ] && run sh -c 'docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null \
-        | grep -E "^(ghcr\.io/sanityprotocol/swg-(panel|node)|swg-panel-docker-swg-(panel|node)):" \
+        | grep -E "^(ghcr\.io/(sanityprotocol|dainickzan)/swg-(panel|node)|swg-panel-docker-swg-(panel|node)):" \
         | xargs -r docker rmi >/dev/null 2>&1 || true'
   fi
   apply_full_data_fate
@@ -959,7 +959,8 @@ _node_nft_sweep(){
   # …its container gone (1.8.8 deferred #15): the image its .env names, as compose resolves it — only one this box still
   # has (an uninstall pulls nothing). Without it rm_docker_node takes the interfaces and the host's nft the tables.
   [ -n "$img" ] || { _tag="$(sed -n 's/^SWG_IMAGE_TAG=//p' "$DOCKER_DIR/.env" 2>/dev/null | sed -n 1p | sed 's/[[:space:]]\{1,\}#.*$//' | tr -d '"')"
-                     img="ghcr.io/sanityprotocol/swg-node:${_tag:-latest}"; docker image inspect "$img" >/dev/null 2>&1 || img=""; }
+                     img="ghcr.io/dainickzan/swg-node:${_tag:-latest}"; docker image inspect "$img" >/dev/null 2>&1 || {
+                       img="ghcr.io/sanityprotocol/swg-node:${_tag:-latest}"; docker image inspect "$img" >/dev/null 2>&1 || img=""; }; }
   [ -n "$img" ] || return 0
   if $DRYRUN; then echo "    [dry] stop swg-node, then delete its swg* nft tables with its own nft ($img)"; return 0; fi
   docker stop -t 10 swg-node >/dev/null 2>&1 || true

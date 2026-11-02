@@ -48,8 +48,8 @@ WRAPPERS = ("lib/common.sh",)                     # the one text (swg_update_wra
 WRITERS = ("install-host.sh", "update.sh", "lib/common.sh")
 PERTURB = "--perturb" in sys.argv
 
-RAW_DEV = "https://raw.githubusercontent.com/SanityProtocol/swg-panel/dev/bootstrap.sh"
-API_DEV = "https://api.github.com/repos/SanityProtocol/swg-panel/contents/bootstrap.sh?ref=dev"
+RAW_DEV = "https://raw.githubusercontent.com/dainickzan/swg-panel/dev/bootstrap.sh"
+API_DEV = "https://api.github.com/repos/dainickzan/swg-panel/contents/bootstrap.sh?ref=dev"
 ACCEPT = "Accept: application/vnd.github.raw"
 BOOT_ARGS = "update -y --no-components --node-only"
 
@@ -148,7 +148,7 @@ def suite(wrapper_srcs, noded_path):
         check("[0] %s carries exactly one swg-update heredoc" % f, len(hits) == 1, len(hits))
         if len(hits) != 1:
             continue
-        r = subprocess.run(["bash", "-c", "_swg_ref=dev\ncat <<WRAP\n%s\nWRAP\n" % hits[0]],
+        r = subprocess.run(["bash", "-c", _lift(wrapper_srcs[f], "swg_update_wrapper_text") + "swg_update_wrapper_text dev\n"],
                            capture_output=True, text=True)
         check("[0b] %s's heredoc renders" % f, r.returncode == 0 and "curl" in r.stdout, r.stderr.strip())
         rendered[f] = r.stdout

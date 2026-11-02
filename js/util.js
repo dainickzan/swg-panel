@@ -94,7 +94,7 @@ export const isSelfContainedIface = (name) => isWdttIface(name) || isCsqttIface(
 // panel-owned access password instead of a browser keypair. ONE source of truth — every shared gate reads these,
 // so adding the next such kind is a single edit here, not a hunt through every filter/colour/vault/picker site.
 export const SELF_CONTAINED_KINDS = ["wdtt", "csqtt"];
-export const isSelfContainedKind = (kind) => kind === "wdtt" || kind === "csqtt";
+export const isSelfContainedKind = (kind) => kind === "wdtt" || kind === "csqtt" || kind === "xray";
 export function ipOf(hostport) { if (!hostport) return ""; const s = String(hostport); return s[0] === "[" ? s.slice(1, s.indexOf("]")) : s.split(":")[0]; }
 export const listenAddr = (host, port) => (port ? ((host ? host : "0.0.0.0") + ":" + port) : "\u2014");
 

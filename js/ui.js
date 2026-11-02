@@ -2138,6 +2138,7 @@ export function applyForkColors() {
 export const meshGenLabel = g => ({ wg: "WG", "2.0": "AWG 2.0", "3.1": "AWG 3.1" })[g || "2.0"] || g;   // i18n-keys: protocol names, the same in every language
 export const meshGenColor = g => ifaceColor(g === "wg" ? "wg" : g === "3.1" ? "awg3" : "awg");
 export function ifaceColor(type) {
+  if (type === "xray") return pickThemed(((Store.panelSettings || {}).iface_colors || {}).xray, "#A78BFA", "#7C3AED");
   const t = (type || "").toLowerCase();
   const ov = (Store.panelSettings && Store.panelSettings.iface_colors) || {};
   const k = t === "awg" ? "awg" : t === "awg3" ? "awg3" : t === "wdtt" ? "wdtt" : t === "csqtt" ? "csqtt" : "wg";   // WDTT + csqtt (keyless proxy targets) are operator-tunable too

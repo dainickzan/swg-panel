@@ -27,7 +27,7 @@ services:
   swg-panel:
     # Pulls the prebuilt multi-arch image from GHCR (no local build, no Docker Hub limit).
     # To build from source instead, comment `image:` and uncomment the `build:` block.
-    image: ghcr.io/sanityprotocol/swg-panel:${SWG_IMAGE_TAG:-latest}
+    image: ghcr.io/dainickzan/swg-panel:${SWG_IMAGE_TAG:-latest}
     # build: .
     pull_policy: ${PULL_POLICY:-missing}
     container_name: swg-panel
@@ -109,7 +109,7 @@ services:
   # internet-facing surface yields only ciphertext (the unlock key rides in the URL fragment and
   # never reaches the server), never the fleet. OFF until you enable it in Settings → Subscriptions.
   swg-sub:
-    image: ghcr.io/sanityprotocol/swg-panel:${SWG_IMAGE_TAG:-latest}
+    image: ghcr.io/dainickzan/swg-panel:${SWG_IMAGE_TAG:-latest}
     # build: .
     pull_policy: ${PULL_POLICY:-missing}
     container_name: swg-sub
@@ -139,6 +139,7 @@ services:
       # its config from subs/serve.json. /dev/null masks a file; tmpfs masks a directory.
       - /dev/null:/etc/swg-panel/auth:ro                      # the panel login hash
       - /dev/null:/var/lib/swg-panel/panel-settings.json:ro   # webhook signing secrets / API token hashes
+      - /dev/null:/var/lib/swg-panel/xray-keys.json:ro
       - /dev/null:/var/lib/swg-panel/subs/vault.json:ro       # the subscription-key vault (SK → every peer's key)
       - /dev/null:/var/lib/swg-panel/subs/escrow.json:ro      # the SK-wrapped per-user unlock keys + tokens
     tmpfs:
@@ -148,7 +149,7 @@ services:
   swg-node:
     # Prebuilt image from GHCR. To build the userspace AmneziaWG datapath from source
     # instead, comment `image:` and uncomment the `build:` block.
-    image: ghcr.io/sanityprotocol/swg-node:${SWG_IMAGE_TAG:-latest}
+    image: ghcr.io/dainickzan/swg-node:${SWG_IMAGE_TAG:-latest}
     # build:
     #   context: .
     #   dockerfile: Dockerfile.node
@@ -188,7 +189,7 @@ services:
       TURN_MANAGE: "${TURN_MANAGE:-manual}"  # panel = the installer mounted docker.sock so swg-noded can run turn-proxy CONTAINERS; manual = no socket
       # …and the turn-proxy containers follow the same tag, so a node testing a pre-release does not run
       # `latest` for its proxies while running the pre-release everywhere else. Still overridable outright.
-      SWG_TURN_IMAGE: "${SWG_TURN_IMAGE:-ghcr.io/sanityprotocol/swg-node:${SWG_IMAGE_TAG:-latest}}"  # image swg-noded runs each turn-proxy container from
+      SWG_TURN_IMAGE: "${SWG_TURN_IMAGE:-ghcr.io/dainickzan/swg-node:${SWG_IMAGE_TAG:-latest}}"
       SWG_HOST_NODE_DIR: "${SWG_HOST_NODE_DIR:-}"   # absolute HOST path of ./data/node — for bind-mounting the turn binary into its container
       SWG_TURN_MIRROR: "${SWG_TURN_MIRROR:-}"   # OPT-IN: space-separated GitHub proxy prefix(es) to fall back to if the direct release download fails (you must trust them to serve the right binary)
       SWG_NFT_CLI_ONLY: "${SWG_NFT_CLI_ONLY:-}"   # 1 = read nftables through the nft CLI only, as 1.8.8 did (no netlink, nothing kept across passes) — a way back; leave unset

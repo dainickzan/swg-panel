@@ -33,7 +33,7 @@ const i = IF.indexOf("export function openIfaceEditor");
 check("a kind-dispatching opener exists", i > 0);
 const fn = i > 0 ? IF.slice(i, IF.indexOf("\n}", i)) : "";
 check("it asks the kind", /iTypeOf\(node, iface\)/.test(fn), fn.slice(0, 200));
-for (const [kind, opener] of [["csqtt", "openEditCsqtt"], ["wdtt", "openEditWdtt"]])
+for (const [kind, opener] of [["csqtt", "openEditCsqtt"], ["wdtt", "openEditWdtt"], ["xray", "openXray"]])
   check(`${kind} routes to ${opener}`, new RegExp(`"${kind}"[\\s\\S]{0,60}${opener}\\(node, iface\\)`).test(fn), fn);
 check("anything else falls back to the WireGuard sheet", /return openEditIface\(node, iface\);/.test(fn), fn);
 

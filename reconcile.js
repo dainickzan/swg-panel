@@ -126,6 +126,15 @@ function reconcile(roster, stats, now, cfg) {
     const wpass = p.wdtt_password || "";
     const cpass = p.csqtt_password || "";
     const targets = targetsIn.map(function (t) {
+      if (t.type === "xray") {
+        const instance = ((stats[t.node] || {}).xray || []).find(item => item.iface === t.iface);
+        const device = instance && (instance.peers || []).find(item => item.peer_id === pid);
+        const status = nodeStatus[t.node] !== "live" ? "unknown" : !instance ? "creating" : !instance.running ? "unknown" : device && device.online ? "online" : "ready";
+        return { ...t, ip: "", status, online: status === "online", observed: null, via: null, viaTurn: null,
+          kwSpeed: device ? { rx: device.rx_rate || 0, tx: device.tx_rate || 0 } : null,
+          kwXfer: device ? { rx_bytes: device.rx_bytes || 0, tx_bytes: device.tx_bytes || 0, rx_speed: device.rx_rate || 0, tx_speed: device.tx_rate || 0 } : null,
+          restorable: false, correctable: false, problemMs: 0, down: null };
+      }
       // Self-contained keyless target (WDTT or csqtt — authoritative from the roster target `type`): status comes
       // from the server's OWN read-back (stats[node].wdtt / stats[node].csqtt), NOT WG observed peers. The
       // panel-owned password is shipped to the server (present in the read-back once synced) and binds to a device
@@ -340,6 +349,7 @@ function reconcile(roster, stats, now, cfg) {
 
     return {
       id: pid, pubkey: pubkey, psk: p.psk || "", title: p.title || "",
+      xray_uuid: p.xray_uuid || "",
       wdtt_password: p.wdtt_password || "", csqtt_password: p.csqtt_password || "", vk_hash: p.vk_hash || "",   // self-contained credentials (panel-owned) + optional VK hash — needed to build the client link
       user_id: (p.user_id != null) ? p.user_id : null,
       name: user ? (user.name || "") : "", tag: user ? (user.tag || "") : "",

@@ -1220,6 +1220,7 @@ done
 [ -d "$SRC/js" ] || die "missing js/ beside this script (unzip the bundle here)"   # the SPA's ES modules
 [ -d "$SRC/m" ] || die "missing m/ beside this script (unzip the bundle here)"     # the phone UI: m.css, the app manifest, icons
 mkdir -p "$PREFIX$PANEL_DIR"; cp "$SRC/swg-panel-server" "$PREFIX$PANEL_DIR/"; chmod 755 "$PREFIX$PANEL_DIR/swg-panel-server"
+cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$PREFIX$PANEL_DIR/"
 for f in index.html app.css app.js reconcile.js turn-artifacts.js; do mkdir -p "$PREFIX$PANEL_DIR"; cp "$SRC/$f" "$PREFIX$PANEL_DIR/"; done
 mkdir -p "$PREFIX$PANEL_DIR/vendor"; cp -a "$SRC/vendor/." "$PREFIX$PANEL_DIR/vendor/"   # qrcode + vendored Preact/htm ESM (buildless SPA)
 mkdir -p "$PREFIX$PANEL_DIR/m"; cp -a "$SRC/m/." "$PREFIX$PANEL_DIR/m/"     # m/ = the phone UI (docs/MOBILE-PLAN.md), a DIRECTORY like js/
@@ -1242,6 +1243,7 @@ if [ -f "$SRC/swg-sub" ]; then
   info "Subscription server (swg-sub)"
   mkdir -p "$PREFIX$SUB_DIR/vendor"
   cp "$SRC/swg-sub" "$PREFIX$SUB_DIR/"; chmod 755 "$PREFIX$SUB_DIR/swg-sub"
+  cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$PREFIX$SUB_DIR/"
   for f in $SUB_WEB; do [ -f "$SRC/$f" ] && cp "$SRC/$f" "$PREFIX$SUB_DIR/"; done
   [ -f "$SRC/vendor/qrcode.js" ] && cp "$SRC/vendor/qrcode.js" "$PREFIX$SUB_DIR/vendor/"
   [ -f "$SRC/VERSION" ] && cp "$SRC/VERSION" "$PREFIX$SUB_DIR/" || true
@@ -1261,6 +1263,8 @@ if [ "$HOST_HAS_WG" = yes ]; then
   info "This box as a node: agent + swg-noded (syncs to the local panel over HTTPS)"
   mkdir -p "$PREFIX$AGENT_DIR"; cp "$SRC/swg-agent" "$PREFIX$AGENT_DIR/"; chmod 755 "$PREFIX$AGENT_DIR/swg-agent"
   mkdir -p "$PREFIX$NODED_DIR"; cp "$SRC/swg-noded" "$PREFIX$NODED_DIR/"; chmod 755 "$PREFIX$NODED_DIR/swg-noded"
+  cp "$SRC/xray_support.py" "$SRC/xray_selfhost.py" "$PREFIX$NODED_DIR/"
+  ensure_xray_runtime
   [ -f "$SRC/swg-sni" ] && { cp "$SRC/swg-sni" "$PREFIX$NODED_DIR/"; chmod 755 "$PREFIX$NODED_DIR/swg-sni"; }   # SNI-router classifier (routing_mode=sni)
   [ -f "$SRC/swg-relay" ] && { cp "$SRC/swg-relay" "$PREFIX$NODED_DIR/"; chmod 755 "$PREFIX$NODED_DIR/swg-relay"; }   # TCP-terminating relay (accelerated mesh legs); inert until the panel asks for it
   [ -f "$SRC/VERSION" ] && cp "$SRC/VERSION" "$PREFIX$NODED_DIR/" || true

@@ -48,6 +48,7 @@ RUN apt-get update \
  && rm -rf /tmp/acme /tmp/acme.tar.gz
 
 WORKDIR /opt/swg-panel
+COPY xray_support.py xray_selfhost.py ./
 COPY swg-panel-server app.css app.js index.html reconcile.js turn-artifacts.js VERSION ./
 # swg-sub — the public subscription surface + its buildless front-end. Rides in this image (pure
 # stdlib, no extra deps) but runs as a SEPARATE, read-only container (see docker-compose.yml).
@@ -89,7 +90,7 @@ if missing:
     sys.exit("INCOMPLETE SPA in the image — unresolved: " + "; ".join(missing[:8]))
 PYJS
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh ./swg-panel-server ./swg-sub /usr/local/bin/swg-passwd
+RUN sed -i 's/\r$//' ./swg-panel-server ./swg-sub && chmod +x /entrypoint.sh ./swg-panel-server ./swg-sub /usr/local/bin/swg-passwd
 
 ENV SWG_PANEL_WEB=/opt/swg-panel \
     SWG_PANEL_FLEET=/etc/swg-panel/fleet.json \

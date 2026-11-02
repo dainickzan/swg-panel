@@ -207,7 +207,7 @@ swgPanel — это панель управления для запуска со
 настраивает всё, включая HTTPS.
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)"
 ```
 
 > **Вы уже `root`?** На многих свежих образах Debian/VPS вход выполняется под root, а `sudo` **не установлен** —
@@ -242,13 +242,13 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-
    Для **bare-metal**-сервера:
 
    ```bash
-   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- node
+   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- node
    ```
 
    Для **Docker**-сервера:
 
    ```bash
-   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- docker node
+   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- docker node
    ```
 
 2. Запустите эту команду на новом сервере. Она спрашивает адрес вашей панели и ключ (оба уже подставлены, если
@@ -441,7 +441,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-
 Запустите это на любом сервере (панель или VPN-сервер) — она сама разберётся, что установлено, и обновит это
 на месте, сохранив все ваши настройки и пользователей:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- update
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- update
 ```
 
 **Обновляетесь с 1.8.6?** Интерфейс обычного WireGuard, который вы **восстанавливали** в 1.8.6, вернулся как
@@ -494,7 +494,7 @@ sudo nft delete table inet swg_reach; sudo nft delete table inet swg_share
 - **Пересобираете VPN-сервер?** Запустите на нём помощник восстановления, и он найдёт оставшуюся личность
   сервера, чтобы тот вернулся в вашу панель **без повторной регистрации**:
   ```bash
-  sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- recovery
+  sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- recovery
   ```
 - **Машина сервера потеряна безвозвратно?** Когда старой машины действительно больше нет — восстанавливать
   не из чего, — панель может **пересобрать** узел на новом железе из личности, которую хранит *она сама*: те
@@ -512,13 +512,13 @@ sudo nft delete table inet swg_reach; sudo nft delete table inet swg_share
 Чтобы перевести сервер **на bare-metal**:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- master
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- master
 ```
 
 Чтобы перевести его **на Docker**:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- docker master
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- docker master
 ```
 
 Он полностью готовит новую версию **прежде**, чем удалить старую, поэтому переключение занимает лишь несколько
@@ -531,7 +531,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-
 turn-прокси) — ничего не удаляется без вашего согласия, и вы можете сохранить данные пользователей/серверов для
 будущей переустановки:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SanityProtocol/swg-panel/main/bootstrap.sh)" -- uninstall
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/dainickzan/swg-panel/main/bootstrap.sh)" -- uninstall
 ```
 
 ## Несколько вещей, которые стоит знать
